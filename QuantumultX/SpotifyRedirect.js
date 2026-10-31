@@ -1,5 +1,5 @@
 /**
- * Spotify Redirect for Quantumult X (White Brand Logo)
+ * Spotify Redirect for Quantumult X
  */
 let body = $response.body;
 let url = $request.url;
@@ -38,7 +38,7 @@ if (body) {
         );
     }
 
-    // 4. 原生暗黑风格卡片（顶部白字 Logo）
+    // 4. 原生暗黑风格卡片
     let mobilePage = `<!DOCTYPE html>
 <html>
 <head>
@@ -65,8 +65,7 @@ if (body) {
 </head>
 <body>
     <div class="container">
-        <!-- 官方白字版 Logo：绿色音符圆标 + 白色 Spotify 英文名 -->
-        <img class="logo" src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" />
+        <img class="logo" src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png" alt="Spotify" />
         <div class="cover-wrapper"><img class="cover-img" src="${image}" alt="Cover" /></div>
         <div class="track-title">${title}</div>
         <div class="track-desc">${desc}</div>
