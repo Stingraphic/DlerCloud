@@ -1,8 +1,8 @@
 #!name = Spotify Redirect
-#!desc = 微信内点击 Spotify 链接时自动提取并唤醒系统默认浏览器打开。需开启 HTTPS 解密 (MitM)。
+#!desc = 微信直开 Spotify 网页时，自动唤醒 Spotify App。需开启 HTTPS 解密 (MitM)。
 
 [MITM]
-hostname = %APPEND% security.wechat.com, weixin110.qq.com
+hostname = %APPEND% open.spotify.com
 
 [Script]
-Spotify Redirect = type=http-response,pattern=^https:\/\/(weixin110\.qq|security\.wechat)\.com\/cgi-bin\/mmspamsupport-bin\/newredirectconfirmcgi\?,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/Stingraphic/DlerCloud/refs/heads/main/Shadowrocket/Spotify%20Redirect.js
+Spotify Redirect = type=http-response,pattern=^https?:\/\/open\.spotify\.com\/(track|album|artist|playlist)\/[a-zA-Z0-9]+,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/Stingraphic/DlerCloud/refs/heads/main/Shadowrocket/Spotify%20Redirect.js
