@@ -1,0 +1,8 @@
+#!name = Spotify Redirect
+#!desc = 微信内点击 Spotify 网页链接自动 302 重定向并唤醒 Spotify App。需开启 HTTPS 解密 (MitM) 并信任证书。
+
+[MITM]
+hostname = %APPEND% open.spotify.com
+
+[URL Rewrite]
+^https?:\/\/open\.spotify\.com\/(track|album|artist|playlist|show|episode)\/([a-zA-Z0-9]+) spotify://$1/$2 302
