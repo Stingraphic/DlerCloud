@@ -1,6 +1,6 @@
 /**
  * Spotify Redirect for WeChat
- * 彻底替换 Spotify 自带引导页，修复点击通知只打开 Shadowrocket 的问题
+ * 彻底修复 Shadowrocket 通知跳转参数，点击通知直达 Spotify App
  */
 let body = $response.body;
 let url = $request.url;
@@ -9,7 +9,7 @@ if (body && /<html/i.test(body)) {
     let appScheme = "spotify://";
     let targetWebUrl = url;
 
-    // 1. 提取 Spotify 资源类型与 ID
+    // 1. 提取 Spotify 链接的类型与 ID
     let match = url.match(/open\.spotify\.com\/(track|album|artist|playlist|show|episode)\/([a-zA-Z0-9]+)/i);
     if (match) {
         appScheme = `spotify://${match[1]}/${match[2]}`;
@@ -22,20 +22,20 @@ if (body && /<html/i.test(body)) {
         }
     }
 
-    // 2. 修复通知跳转：同时兼容第 4 参数直接传 URL 以及 opts 对象传参
-    // 优先直接传入 appScheme（直接切进 Spotify App）或 targetWebUrl
-    try {
-        $notification.post(
-            "前往 Spotify", 
-            "轻点直接切入 App 播放", 
-            "轻点本条通知即可离开微信打开", 
-            targetWebUrl
-        );
-    } catch (e) {
-        $notification.post("前往 Spotify", "", "轻点打开", { "open-url": targetWebUrl, "url": targetWebUrl });
-    }
+    // 2. 关键修复：Shadowrocket 原生识别的 action 与 open-url / url 结构
+    // 传入原生 Scheme，点击横幅让 iOS 系统直接唤醒 Spotify
+    $notification.post(
+        "前往 Spotify",
+        "轻点直接切入 App 播放",
+        "点击此横幅即可立即切出微信",
+        {
+            "action": "open-url",
+            "url": appScheme,
+            "open-url": appScheme
+        }
+    );
 
-    // 3. 构建全屏纯黑卡片页面，提供手动点击备用
+    // 3. 页面彻底替换为深色简约卡片，干掉原来的引导页
     let cleanPage = `<!DOCTYPE html>
 <html>
 <head>
@@ -116,19 +116,4 @@ if (body && /<html/i.test(body)) {
 <body>
     <div class="card">
         <div class="icon">
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="#fff"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-        </div>
-        <div class="title">前往 Spotify</div>
-        <div class="desc">轻点屏幕顶部通知即可直达<br>或点右上角「…」在浏览器打开</div>
-        <div class="btn-box">
-            <button class="btn-cancel" onclick="WeixinJSBridge.call('closeWindow')">关闭</button>
-            <button class="btn-go" onclick="window.location.href='${appScheme}'">尝试打开</button>
-        </div>
-    </div>
-</body>
-</html>`;
-
-    $done({ body: cleanPage });
-} else {
-    $done({});
-}
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="#fff"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.
