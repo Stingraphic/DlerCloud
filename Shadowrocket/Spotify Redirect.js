@@ -52,3 +52,6 @@ if (body && /<html/i.test(body)) {
 } else {
     $done({});
 }
+
+// 在 JS 触发的同时，通知代理工具下发带有 open-url 的通知
+$notification.post("前往 Spotify", "", "请轻点此通知，在系统浏览器中打开", { "open-url": targetWebUrl });
