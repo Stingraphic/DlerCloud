@@ -2,8 +2,44 @@
 #!desc = 仅针对微信内打开 Spotify 链接时自动触发 Scheme 唤醒 App。需开启 HTTPS 解密 (MitM)。
 
 [MITM]
-hostname = %APPEND% open.spotify.com
+hostname = %APPEND% security.wechat.com, weixin110.qq.com
 
-[URL Rewrite]
-# 仅针对 Spotify 的歌曲/专辑/歌手/歌单/播客链接生效，直接返回轻量跳转代码
-^https?:\/\/open\.spotify\.com\/(track|album|artist|playlist|show|episode)\/([a-zA-Z0-9]+).* echo-response text/html data:text/html;charset=utf-8,<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>正在打开 Spotify</title></head><body style="background:#121212;color:#fff;display:flex;align-items:center;justify-content:center;height:80vh;font-family:-apple-system,sans-serif"><a id="btn" href="spotify://$1/$2" style="background:#1DB954;color:#fff;padding:12px 28px;border-radius:24px;text-decoration:none;font-weight:bold">打开 Spotify</a><script>(function(){var isWx=/micromessenger/i.test(navigator.userAgent);if(isWx){setTimeout(function(){var a=document.getElementById('btn');a.click();window.location.href='spotify://$1/$2';},50);}})();</script></body></html>
+[Script]
+SpotifyWeChat = type=http-response,pattern=^https:\/\/(weixin110\.qq|security\.wechat)\.com\/cgi-bin\/mmspamsupport-bin\/newredirectconfirmcgi\?,requires-body=1,max-size=0,script-path=SpotifyWeChatOnly.js
+
+let body = $response.body;
+
+if (body) {
+    // 微信拦截页面的原始目标链接通常在 url 或 search 参数中，或者在页面源码的 url 变量中
+    // 检查这个被拦截的链接是否指向 Spotify
+    let isSpotify = /open\.spotify\.com/i.test($request.url) || /open\.spotify\.com/i.test(body);
+
+    if (isSpotify) {
+        // 提取具体的 Spotify 路径与参数
+        let match = body.match(/https?%3A%2F%2Fopen\.spotify\.com%2F(track|album|artist|playlist)%2F([a-zA-Z0-9]+)/i) 
+                 || body.match(/https?:\/\/open\.spotify\.com\/(track|album|artist|playlist)\/([a-zA-Z0-9]+)/i);
+
+        let targetScheme = "spotify://";
+        if (match) {
+            targetScheme = `spotify://${match[1]}/${match[2]}`;
+        }
+
+        // 利用微信在确认页中内置的接口，强制拉起系统浏览器接管或直接下发 Scheme
+        let injectCode = `
+        <script>
+            window.onload = function() {
+                // 优先尝试直接触发微信环境下的外部跳转
+                location.href = "${targetScheme}";
+            };
+        </script>
+        `;
+
+        body = body.replace(/<\/head>/i, injectCode + '</head>');
+        $done({ body });
+    } else {
+        // 如果不是 Spotify 链接，原封不动放行，绝不干扰其他网页
+        $done({});
+    }
+} else {
+    $done({});
+}
