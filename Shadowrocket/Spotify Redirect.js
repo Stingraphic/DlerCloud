@@ -1,43 +1,39 @@
-/**
- * Spotify Redirect for WeChat
- */
 let body = $response.body;
 
-if (body) {
-    let targetUrl = "";
+if (body && /<html/i.test(body)) {
+    let url = $request.url;
+    let match = url.match(/open\.spotify\.com\/(track|album|artist|playlist|show|episode)\/([a-zA-Z0-9]+)/i);
     
-    // 提取微信拦截页面中的真实目标 URL
-    let match = body.match(/var url = '(.*?)';/);
-    if (match && match[1]) {
-        targetUrl = match[1];
-    } else {
-        let q = $request.url.match(/url=([^&]+)/);
-        if (q && q[1]) targetUrl = decodeURIComponent(q[1]);
-    }
-
-    // 仅在目标链接为 open.spotify.com 时执行微信底层唤起浏览器接口
-    if (targetUrl && /open\.spotify\.com/i.test(targetUrl)) {
-        let inject = `
+    if (match) {
+        let type = match[1];
+        let id = match[2];
+        let appScheme = `spotify://${type}/${id}`;
+        
+        let injectHtml = `
+        <div id="wx-spotify-bar" style="position:fixed;top:0;left:0;width:100%;z-index:999999;background:#1DB954;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.5);font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+            <span style="color:#fff;font-size:14px;font-weight:bold;">正在前往 Spotify App...</span>
+            <a id="wx-spotify-btn" href="${appScheme}" style="background:#000;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:bold;text-decoration:none;">立即打开</a>
+        </div>
         <script>
-        function openInBrowser() {
-            if (typeof WeixinJSBridge !== 'undefined' && WeixinJSBridge.invoke) {
-                WeixinJSBridge.invoke('openUrlByBro', { 'url': '${targetUrl}' }, function(e){});
-            } else {
-                location.href = '${targetUrl}';
+        (function() {
+            function launch() {
+                var btn = document.getElementById('wx-spotify-btn');
+                if (btn) btn.click();
+                window.location.href = "${appScheme}";
             }
-        }
-        if (typeof WeixinJSBridge === 'undefined') {
-            document.addEventListener('WeixinJSBridgeReady', openInBrowser, false);
-        } else {
-            openInBrowser();
-        }
-        </script>`;
-
-        body = body.replace('/exit', targetUrl);
-        body = body.replace(/<\/head>/i, inject + '</head>');
+            // 页面加载完成后立即尝试触发
+            if (document.readyState === 'complete') {
+                launch();
+            } else {
+                window.addEventListener('load', launch);
+            }
+        })();
+        </script>
+        `;
+        
+        body = body.replace(/(<body[^>]*>)/i, `$1${injectHtml}`);
         $done({ body: body });
     } else {
-        // 非 Spotify 链接直接原样放行
         $done({});
     }
 } else {
