@@ -1,42 +1,45 @@
-let b = $response.body;
-if (b) {
-  let u = '';
-  // 1. 完全按照原版的方式从微信的确认页提取真实目标 URL
-  let m = b.match(/var url = '(.*?)';/);
-  if (m && m[1]) {
-    u = m[1];
-  } else {
-    let q = $request.url.match(/url=([^&]+)/);
-    if (q && q[1]) u = decodeURIComponent(q[1]);
-  }
+/**
+ * Spotify Redirect for WeChat
+ */
+let body = $response.body;
 
-  // 2. 核心过滤器：只有命中 open.spotify.com 才接管，其他链接全部跳过
-  if (u && /open\.spotify\.com/i.test(u)) {
-    // 3. 原版 UnblockURLinWeChat 的底层唤起调用
-    let c = `
-    <script>
-    function go() {
-      if (typeof WeixinJSBridge !== 'undefined' && WeixinJSBridge.invoke) {
-        WeixinJSBridge.invoke('openUrlByBro', { 'url': '${u}' }, function(e){});
-      } else {
-        location.href = '${u}';
-      }
-    }
-    if (typeof WeixinJSBridge === 'undefined') {
-      document.addEventListener('WeixinJSBridgeReady', go, false);
+if (body) {
+    let targetUrl = "";
+    
+    // 提取微信拦截页面中的真实目标 URL
+    let match = body.match(/var url = '(.*?)';/);
+    if (match && match[1]) {
+        targetUrl = match[1];
     } else {
-      go();
+        let q = $request.url.match(/url=([^&]+)/);
+        if (q && q[1]) targetUrl = decodeURIComponent(q[1]);
     }
-    </script>`;
 
-    // 4. 替换原网页的退出机制并注入自动跳转代码
-    b = b.replace('/exit', u);
-    b = b.replace(/<\/head>/i, c + '</head>');
-    $done({ body: b });
-  } else {
-    // 非 Spotify 目标，直接放行保持微信原版行为
-    $done({});
-  }
+    // 仅在目标链接为 open.spotify.com 时执行微信底层唤起浏览器接口
+    if (targetUrl && /open\.spotify\.com/i.test(targetUrl)) {
+        let inject = `
+        <script>
+        function openInBrowser() {
+            if (typeof WeixinJSBridge !== 'undefined' && WeixinJSBridge.invoke) {
+                WeixinJSBridge.invoke('openUrlByBro', { 'url': '${targetUrl}' }, function(e){});
+            } else {
+                location.href = '${targetUrl}';
+            }
+        }
+        if (typeof WeixinJSBridge === 'undefined') {
+            document.addEventListener('WeixinJSBridgeReady', openInBrowser, false);
+        } else {
+            openInBrowser();
+        }
+        </script>`;
+
+        body = body.replace('/exit', targetUrl);
+        body = body.replace(/<\/head>/i, inject + '</head>');
+        $done({ body: body });
+    } else {
+        // 非 Spotify 链接直接原样放行
+        $done({});
+    }
 } else {
-  $done({});
+    $done({});
 }
