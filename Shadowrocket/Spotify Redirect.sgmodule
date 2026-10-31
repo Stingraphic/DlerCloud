@@ -1,11 +1,11 @@
 #!name = Spotify Redirect
-#!desc = 微信内点击 Spotify 链接弹出模态确认弹窗，点击直接跳出唤起 Spotify App。需开启 HTTPS 解密 (MitM)。
+#!desc = 微信内点击 Spotify 链接自动弹出唤醒确认，支持 spotify.app.link。需开启 HTTPS 解密 (MitM)。
 
 [MITM]
-hostname = %APPEND% open.spotify.com
+hostname = %APPEND% open.spotify.com, spotify.app.link
 
 [Header Rewrite]
 ^https?:\/\/open\.spotify\.com\/(track|album|artist|playlist|show|episode) header-replace User-Agent "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
 
 [Script]
-Spotify Redirect = type=http-response,pattern=^https?:\/\/open\.spotify\.com\/(track|album|artist|playlist)\/[a-zA-Z0-9]+,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/Stingraphic/DlerCloud/refs/heads/main/Shadowrocket/Spotify%20Redirect.js
+Spotify Redirect = type=http-response,pattern=^https?:\/\/(open\.spotify\.com|spotify\.app\.link),requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/Stingraphic/DlerCloud/refs/heads/main/Shadowrocket/Spotify%20Redirect.js
