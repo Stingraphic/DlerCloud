@@ -1,45 +1,9 @@
-#!name = Spotify Redirect
-#!desc = 仅针对微信内打开 Spotify 链接时自动触发 Scheme 唤醒 App。需开启 HTTPS 解密 (MitM)。
+#!name =  Spotify Redirect
+#!desc = 单文件独立模块。仅在微信安全跳转页中提取并自动唤醒 Spotify App，其他链接原样放行。需开启 HTTPS 解密 (MitM)。
 
 [MITM]
 hostname = %APPEND% security.wechat.com, weixin110.qq.com
 
 [Script]
-SpotifyWeChat = type=http-response,pattern=^https:\/\/(weixin110\.qq|security\.wechat)\.com\/cgi-bin\/mmspamsupport-bin\/newredirectconfirmcgi\?,requires-body=1,max-size=0,script-path=SpotifyWeChatOnly.js
-
-let body = $response.body;
-
-if (body) {
-    // 微信拦截页面的原始目标链接通常在 url 或 search 参数中，或者在页面源码的 url 变量中
-    // 检查这个被拦截的链接是否指向 Spotify
-    let isSpotify = /open\.spotify\.com/i.test($request.url) || /open\.spotify\.com/i.test(body);
-
-    if (isSpotify) {
-        // 提取具体的 Spotify 路径与参数
-        let match = body.match(/https?%3A%2F%2Fopen\.spotify\.com%2F(track|album|artist|playlist)%2F([a-zA-Z0-9]+)/i) 
-                 || body.match(/https?:\/\/open\.spotify\.com\/(track|album|artist|playlist)\/([a-zA-Z0-9]+)/i);
-
-        let targetScheme = "spotify://";
-        if (match) {
-            targetScheme = `spotify://${match[1]}/${match[2]}`;
-        }
-
-        // 利用微信在确认页中内置的接口，强制拉起系统浏览器接管或直接下发 Scheme
-        let injectCode = `
-        <script>
-            window.onload = function() {
-                // 优先尝试直接触发微信环境下的外部跳转
-                location.href = "${targetScheme}";
-            };
-        </script>
-        `;
-
-        body = body.replace(/<\/head>/i, injectCode + '</head>');
-        $done({ body });
-    } else {
-        // 如果不是 Spotify 链接，原封不动放行，绝不干扰其他网页
-        $done({});
-    }
-} else {
-    $done({});
-}
+# 内联 Base64 脚本：精准嗅探微信安全页中的 Spotify 目标链接并强制唤醒，非 Spotify 链接原样放行
+SpotifyWeChat = type=http-response,pattern=^https:\/\/(weixin110\.qq|security\.wechat)\.com\/cgi-bin\/mmspamsupport-bin\/newredirectconfirmcgi\?,requires-body=1,max-size=0,script-path=data:text/javascript;base64,bGV0IGJvZHkgPSAkcmVzcG9uc2UuYm9keTsKaWYgKGJvZHkpIHsKICAgIGxldCBpc1Nwb3RpZnkgPSAvb3Blblwuc3BvdGlmeVwuY29tL2kudGVzdCgkcmVxdWVzdC51cmwpIHx8IC9vcGVuXC5zcG90aWZ5XC5jb20vaS50ZXN0KGJvZHkpOwogICAgaWYgKGlzU3BvdGlmeSkgewogICAgICAgIGxldCBtYXRjaCA9IGJvZHkubWF0Y2goL2h0dHBzPyUzQSUyRiUyRm9wZW5cLnNwb3RpZnlcLmNvbSUyRih0cmFja3xhbGJ1bXxhcnRpc3R8cGxheWxpc3R8c2hvd3xlcGlzb2RlKSUyRihbYS16QS1aMC05XSspL2kpIAogICAgICAgICAgICAgICAgIHx8IGJvZHkubWF0Y2goL2h0dHBzPzpcL1wvb3Blblwuc3BvdGlmeVwuY29tXC8odHJhY2t8YWxidW18YXJ0aXN0fHBsYXlsaXN0fHNob3d8ZXBpc29kZSlcLyhbYS16QS1aMC05XSspL2kpOwogICAgICAgIGxldCB0YXJnZXRTY2hlbWUgPSAic3BvdGlmeTovLyI7CiAgICAgICAgaWYgKG1hdGNoKSB7CiAgICAgICAgICAgIHRhcmdldFNjaGVtZSA9ICdzcG90aWZ5Oi8vJyArIG1hdGNoWzFdICsgJy8nICsgbWF0Y2hbMl07CiAgICAgICAgfQogICAgICAgIGxldCBpbmplY3RDb2RlID0gJzxzY3JpcHQ+d2luZG93Lm9ubG9hZD1mdW5jdGlvbigpe3dpbmRvdy5sb2NhdGlvbi5ocmVmPSInICsgdGFyZ2V0U2NoZW1lICsgJyI7fTs8L3NjcmlwdD4nOwogICAgICAgIGJvZHkgPSBib
