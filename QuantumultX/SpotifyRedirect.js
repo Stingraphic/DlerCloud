@@ -54,16 +54,18 @@ if (body) {
             display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden;
         }
         .container { width: 86%; max-width: 360px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .cover-wrapper { width: 240px; height: 240px; margin-bottom: 24px; box-shadow: 0 12px 36px rgba(0,0,0,0.7); border-radius: 8px; overflow: hidden; background-color: #282828; }
+        .logo { width: 130px; height: auto; margin-bottom: 24px; }
+        .cover-wrapper { width: 230px; height: 230px; margin-bottom: 20px; box-shadow: 0 12px 36px rgba(0,0,0,0.7); border-radius: 8px; overflow: hidden; background-color: #282828; }
         .cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .track-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #fff; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .track-desc { font-size: 14px; color: #b3b3b3; margin-bottom: 32px; line-height: 1.4; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .track-desc { font-size: 14px; color: #b3b3b3; margin-bottom: 28px; line-height: 1.4; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .btn-open { background-color: #1DB954; color: #000; font-size: 15px; font-weight: 700; padding: 14px 36px; border-radius: 500px; text-decoration: none; display: inline-block; }
-        .tip { margin-top: 18px; font-size: 12px; color: #6a6a6a; }
+        .tip { margin-top: 16px; font-size: 12px; color: #6a6a6a; }
     </style>
 </head>
 <body>
     <div class="container">
+        <img class="logo" src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png" alt="Spotify" />
         <div class="cover-wrapper"><img class="cover-img" src="${image}" alt="Cover" /></div>
         <div class="track-title">${title}</div>
         <div class="track-desc">${desc}</div>
