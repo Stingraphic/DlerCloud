@@ -1,0 +1,8 @@
+# Spotify Redirect for WeChat (Quantumult X Rewrite Snippet)
+# 作用：在微信打开 Spotify 链接时展示高质感深色卡片并推送系统横幅，点击直达 App
+
+# MITM 主机名定义
+hostname = open.spotify.com, spotify.app.link
+
+# 重写响应体挂载 JS 脚本
+^https?:\/\/(open\.spotify\.com|spotify\.app\.link)\/(track|album|artist|playlist|show|episode|[a-zA-Z0-9_\-]+) url script-response-body https://raw.githubusercontent.com/Stingraphic/DlerCloud/refs/heads/main/QuantumultX/SpotifyRedirect.js
