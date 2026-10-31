@@ -1,5 +1,5 @@
 /**
- * Spotify Redirect for Shadowrocket
+ * Spotify Redirect for Shadowrocket (Mobile Card View)
  */
 let body = $response.body;
 let url = $request.url;
@@ -7,7 +7,7 @@ let url = $request.url;
 if (body) {
     let appScheme = "spotify://";
 
-    // 1. 匹配 Spotify 各种链接（带参数、带 query 均能匹配）
+    // 1. 提取 Scheme
     let match = url.match(/(track|album|artist|playlist|show|episode)\/([a-zA-Z0-9]+)/i);
     if (match) {
         appScheme = `spotify://${match[1]}/${match[2]}`;
@@ -18,13 +18,123 @@ if (body) {
         }
     }
 
-    // 2. 发送直跳通知：第 4 参数直接传 Scheme
-    $notification.post("正在打开 Spotify", "轻点直接切入 App", "微信已拦截，轻点横幅跳转", appScheme);
+    // 2. 提取原网页中的封面、标题与简介信息 (OpenGraph 元数据)
+    let titleMatch = body.match(/<meta\s+property=["']og:title["']\s+content=["'](.*?)["']/i) || body.match(/<title>(.*?)<\/title>/i);
+    let title = titleMatch ? titleMatch[1].replace(/ \| Spotify$/i, '') : "Spotify 音乐";
 
-    // 3. 覆盖全黑页面，去掉官方所有引导页
-    let cleanHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Spotify</title><style>body{margin:0;background:#121212;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,sans-serif;text-align:center;padding:20px;box-sizing:border-box;}</style></head><body><div><div style="font-size:18px;font-weight:bold;margin-bottom:8px;">正在打开 Spotify</div><div style="color:#b3b3b3;font-size:13px;">请轻点屏幕顶部通知横幅</div></div></body></html>`;
+    let descMatch = body.match(/<meta\s+property=["']og:description["']\s+content=["'](.*?)["']/i);
+    let desc = descMatch ? descMatch[1] : "轻点顶部通知切入 App 收听";
 
-    $done({ body: cleanHtml });
+    let imageMatch = body.match(/<meta\s+property=["']og:image["']\s+content=["'](.*?)["']/i);
+    let image = imageMatch ? imageMatch[1] : "";
+
+    // 3. 发送直跳通知横幅
+    $notification.post("正在打开 Spotify", title, "微信已拦截跳转，请轻点此通知直接打开", appScheme);
+
+    // 4. 构建媲美 Spotify 官方移动端风格的卡片界面
+    let mobilePage = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>${title}</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .container {
+            width: 86%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .cover-wrapper {
+            width: 240px;
+            height: 240px;
+            margin-bottom: 24px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.7);
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #282828;
+        }
+        .cover-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .track-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #ffffff;
+            line-height: 1.3;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .track-desc {
+            font-size: 14px;
+            color: #b3b3b3;
+            margin-bottom: 32px;
+            line-height: 1.4;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .btn-open {
+            background-color: #1DB954;
+            color: #000;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 14px 36px;
+            border-radius: 500px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.1s ease;
+        }
+        .btn-open:active {
+            transform: scale(0.96);
+        }
+        .tip {
+            margin-top: 18px;
+            font-size: 12px;
+            color: #6a6a6a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="cover-wrapper">
+            <img class="cover-img" src="${image}" alt="Cover" />
+        </div>
+        <div class="track-title">${title}</div>
+        <div class="track-desc">${desc}</div>
+        <a class="btn-open" href="${appScheme}">在 Spotify 中打开</a>
+        <div class="tip">轻点屏幕顶部横幅通知亦可直接跳转</div>
+    </div>
+</body>
+</html>`;
+
+    $done({ body: mobilePage });
 } else {
     $done({});
 }
