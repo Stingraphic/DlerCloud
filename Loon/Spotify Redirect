@@ -1,7 +1,7 @@
 #!name = Spotify 微信跳转
 #!desc = 在微信内打开 Spotify 链接时展示高质感暗黑原生卡片，并自动发送系统横幅通知直达 App。
 #!author = Sting
-#!icon = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png
+#!icon = https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Spotify.png
 
 [MITM]
 hostname = open.spotify.com, spotify.app.link
