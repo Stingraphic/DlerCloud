@@ -8,4 +8,4 @@ hostname = open.spotify.com, spotify.app.link
 
 [Script]
 # 直接写文件名，Loon 会自动在 iCloud 的 Loon/Scripts 目录中读取
-http-response ^https?:\/\/(open\.spotify\.com|spotify\.app\.link)\/(track|album|artist|playlist|show|episode|[a-zA-Z0-9_\-]+) script-path=https://fastly.jsdelivr.net/gh/Stingraphic/DlerCloud@main/Shadowrocket/Spotify%20Redirect.js, requires-body=true, tag=SpotifyRedirect
+http-response ^https?:\/\/(open\.spotify\.com|spotify\.app\.link)\/(track|album|artist|playlist|show|episode|[a-zA-Z0-9_\-]+) script-path=https://fastly.jsdelivr.net/gh/Stingraphic/DlerCloud@main/Loon/Spotify%20Redirect.js, requires-body=true, tag=SpotifyRedirect
