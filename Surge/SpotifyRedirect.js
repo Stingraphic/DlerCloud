@@ -1,5 +1,5 @@
 /**
- * Spotify Redirect for Surge (符合官方规范标准版)
+ * Spotify Redirect for Surge (严格符合 Surge 规范版)
  */
 let headers = $request.headers || {};
 let ua = "";
@@ -14,7 +14,7 @@ let isWeChat = /micromessenger/i.test(ua);
 let body = $response.body;
 let url = $request.url;
 
-// 非微信环境或空响应体时，传空对象原样放行
+// 非微信环境或无响应体时，平铺传空原样放行
 if (!isWeChat || !body) {
     $done({});
 } else {
@@ -41,17 +41,15 @@ if (!isWeChat || !body) {
     let imageMatch = body.match(/<meta\s+property=["']og:image["']\s+content=["'](.*?)["']/i);
     let image = imageMatch ? imageMatch[1] : "";
 
-    // 自动将缩略图哈希升级为 640x640 原画大图
+    // 自动将 Spotify 缩略图升级为 640x640 高清大图
     if (image.includes("i.scdn.co/image/")) {
         image = image.replace(/ab67616d0000(1e02|4851)/g, "ab67616d0000b273");
     }
 
-    // 3. 补齐 Surge 标准通知（点击通知打开 scheme）
-    if (typeof $notification !== "undefined") {
-        $notification.post("正在打开 Spotify", title, "微信已拦截跳转，请轻点此通知直接打开", appScheme);
-    }
+    // 3. 补充 Surge 标准系统横幅通知（第 4 个参数传入 scheme 实现点击直跳）
+    $notification.post("正在打开 Spotify", title, "微信已拦截跳转，请轻点此通知直接打开", appScheme);
 
-    // 4. 构建暗黑黄金居中卡片
+    // 4. 构建黄金比例暗黑卡片（绿标 + 白字）
     let mobilePage = `<!DOCTYPE html>
 <html>
 <head>
@@ -183,12 +181,6 @@ if (!isWeChat || !body) {
 </body>
 </html>`;
 
-    // 5. Surge 标准平铺返回格式
-    $done({
-        status: 200,
-        headers: {
-            "Content-Type": "text/html; charset=utf-8"
-        },
-        body: mobilePage
-    });
+    // 5. 严格平铺返回给 Surge
+    $done({ body: mobilePage });
 }
