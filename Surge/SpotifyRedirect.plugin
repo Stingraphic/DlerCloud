@@ -1,10 +1,9 @@
-#!name=Spotify 微信跳转
-#!desc=在微信内打开 Spotify 链接时展示高质感暗黑原生卡片，并自动发送系统横幅通知直达 App。
-#!author=Sting
+#!name = Spotify 微信跳转
+#!desc = 微信内打开 Spotify 链接时展示暗黑原生居中卡片，并发送横幅通知直达 App。
+#!author = Sting
 
 [MITM]
 hostname = %APPEND% open.spotify.com, spotify.app.link
 
 [Script]
-SpotifyRedirect = type=http-response,pattern=^https?:\/\/(open\.spotify\.com|spotify\.app\.link)\/(track|album|artist|playlist|show|episode|[a-zA-Z0-9_\-]+),requires-body=true,max-size=-1,script-path=https://raw.githubusercontent.com/Stingraphic/DlerCloud/refs/heads/main/Surge/SpotifyRedirect.js
-
+SpotifyRedirect = type=http-response,pattern=^https?:\/\/(open\.spotify\.com|spotify\.app\.link)\/(track|album|artist|playlist|show|episode|[a-zA-Z0-9_\-]+),requires-body=true,max-size=-1,script-path=https://fastly.jsdelivr.net/gh/Stingraphic/DlerCloud@main/Surge/SpotifyRedirect.js
