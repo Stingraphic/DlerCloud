@@ -1,178 +1,104 @@
 /**
- * Spotify Redirect for Surge (微信专属 - 高清居中卡片 & 系统跳转通知)
+ * Spotify Redirect for Surge（微信专属 - 高清居中卡片 & 系统跳转通知）
+ *
+ * Surge 修正版，改了三处：
+ * 1. $done 改用 http-response 要求的平铺格式 { headers, body }，不再嵌套 response（那是 QX/Loon 写法，Surge 会当作不修改）。
+ * 2. 补上 $notification.post：点按横幅通知以 spotify:// 直达 App，并带封面图（模块里需配合 max-size=-1）。
+ * 3. 返回时剔除原页面的 CSP 响应头，否则替换后的卡片页内联样式和脚本会被 Spotify 原页面的安全策略拦截。
  */
-let headers = $request.headers || {};
-let ua = headers['User-Agent'] || headers['user-agent'] || '';
+
+let reqHeaders = $request.headers || {};
+let ua = reqHeaders['User-Agent'] || reqHeaders['user-agent'] || '';
 let isWeChat = /micromessenger/i.test(ua);
 
 let body = $response.body;
 let url = $request.url;
 
 if (isWeChat && body) {
-    let appScheme = "spotify://";
+  let appScheme = "spotify://";
 
-    // 1. 提取 Scheme
-    let match = url.match(/(track|album|artist|playlist|show|episode)\/([a-zA-Z0-9]+)/i);
-    if (match) {
-        appScheme = `spotify://${match[1]}/${match[2]}`;
-    } else {
-        let schemeMatch = body.match(/spotify:\/\/(track|album|artist|playlist|show|episode)\/[a-zA-Z0-9]+/i);
-        if (schemeMatch) {
-            appScheme = schemeMatch[0];
-        }
+  // 1. 提取 Scheme：先从 URL 取，其次从页面正文里找
+  let match = url.match(/(track|album|artist|playlist|show|episode)\/([a-zA-Z0-9]+)/i);
+  if (match) {
+    appScheme = `spotify://${match[1]}/${match[2]}`;
+  } else {
+    let schemeMatch = body.match(/spotify:\/\/(track|album|artist|playlist|show|episode)\/[a-zA-Z0-9]+/i);
+    if (schemeMatch) {
+      appScheme = schemeMatch[0];
     }
+  }
 
-    // 2. 提取 OpenGraph 元数据
-    let titleMatch = body.match(/<meta\s+property=["']og:title["']\s+content=["'](.*?)["']/i) || body.match(/<title>(.*?)<\/title>/i);
-    let title = titleMatch ? titleMatch[1].replace(/ \| Spotify$/i, '') : "Spotify 音乐";
+  // 2. 提取 OpenGraph 元数据
+  function og(prop) {
+    let m = body.match(new RegExp('<meta[^>]+property=["\']og:' + prop + '["\'][^>]*content=["\']([^"\']+)["\']', 'i'))
+      || body.match(new RegExp('<meta[^>]+content=["\']([^"\']+)["\'][^>]*property=["\']og:' + prop + '["\']', 'i'));
+    return m ? m[1] : '';
+  }
 
-    let descMatch = body.match(/<meta\s+property=["']og:description["']\s+content=["'](.*?)["']/i);
-    let desc = descMatch ? descMatch[1] : "轻点顶部通知切入 App 收听";
+  let titleMatch = body.match(/<title>(.*?)<\/title>/i);
+  let title = og('title') || (titleMatch ? titleMatch[1].replace(/ \| Spotify$/i, '') : "Spotify 音乐");
+  let desc = og('description') || "在 Spotify 中打开";
+  let image = og('image');
 
-    let imageMatch = body.match(/<meta\s+property=["']og:image["']\s+content=["'](.*?)["']/i);
-    let image = imageMatch ? imageMatch[1] : "";
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
-    // 自动将 Spotify 缩略图哈希升级为 640x640 高清大图
-    if (image.includes("i.scdn.co/image/")) {
-        image = image.replace(/ab67616d0000(1e02|4851)/g, "ab67616d0000b273");
-    }
+  // 3. 发送系统横幅通知：点按通知以 spotify:// 直达 App
+  let notifyOpts = { url: appScheme };
+  if (image) {
+    notifyOpts['media-url'] = image;
+  }
+  $notification.post(title, "Spotify", "点按此通知在 Spotify App 中打开", notifyOpts);
 
-    // 3. Surge 系统通知直跳（第 4 个参数传入 scheme 点击直接打开 App）
-    $notification.post("正在打开 Spotify", title, "微信已拦截跳转，请轻点此通知直接打开", appScheme);
-
-    // 4. 构建暗黑黄金比例居中卡片
-    let mobilePage = `<!DOCTYPE html>
-<html>
+  // 4. 生成暗黑居中卡片页
+  let mobilePage = `<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>${title}</title>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #121212; color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden;
-        }
-        .wrapper {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-top: -32px;
-            padding: 0 20px;
-        }
-        .brand-header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-        .spotify-icon {
-            width: 30px;
-            height: 30px;
-            fill: #1DB954;
-        }
-        .brand-text {
-            font-size: 22px;
-            font-weight: 700;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-        }
-        .cover-box {
-            width: 76vw;
-            height: 76vw;
-            max-width: 300px;
-            max-height: 300px;
-            margin-bottom: 22px;
-            box-shadow: 0 16px 40px rgba(0,0,0,0.75);
-            border-radius: 12px;
-            overflow: hidden;
-            background-color: #242424;
-            flex-shrink: 0;
-        }
-        .cover-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-        .info-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            width: 100%;
-            max-width: 330px;
-        }
-        .track-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            color: #ffffff;
-            line-height: 1.3;
-            width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .track-desc {
-            font-size: 13.5px;
-            color: #b3b3b3;
-            margin-bottom: 22px;
-            width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .btn-open {
-            background-color: #1DB954;
-            color: #000;
-            font-size: 15px;
-            font-weight: 700;
-            padding: 13px 40px;
-            border-radius: 500px;
-            text-decoration: none;
-            display: inline-block;
-            box-shadow: 0 4px 14px rgba(29, 185, 84, 0.3);
-        }
-        .btn-open:active {
-            transform: scale(0.96);
-            opacity: 0.9;
-        }
-        .tip {
-            margin-top: 14px;
-            font-size: 12px;
-            color: #666;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${esc(title)} | Spotify</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #121212; color: #fff; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { width: 100%; max-width: 340px; background: #181818; border-radius: 16px; padding: 28px 24px; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.55); }
+  .cover { width: 200px; height: 200px; border-radius: 10px; object-fit: cover; background: #282828; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  .no-cover { width: 200px; height: 200px; border-radius: 10px; background: #282828; display: inline-flex; align-items: center; justify-content: center; font-size: 56px; color: #1db954; }
+  h1 { font-size: 20px; line-height: 1.35; margin: 20px 0 8px; word-break: break-word; }
+  p { font-size: 14px; line-height: 1.55; color: #b3b3b3; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .btn { display: block; margin-top: 24px; padding: 14px 20px; background: #1db954; color: #000; font-size: 16px; font-weight: 700; border-radius: 999px; text-decoration: none; }
+  .btn:active { background: #1ed760; }
+  .tip { margin-top: 14px; font-size: 12px; color: #727272; }
+</style>
 </head>
 <body>
-    <div class="wrapper">
-        <div class="brand-header">
-            <svg class="spotify-icon" viewBox="0 0 24 24">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-            </svg>
-            <span class="brand-text">Spotify</span>
-        </div>
-        <div class="cover-box">
-            <img class="cover-img" src="${image}" alt="Cover" />
-        </div>
-        <div class="info-box">
-            <div class="track-title">${title}</div>
-            <div class="track-desc">${desc}</div>
-            <a class="btn-open" href="${appScheme}">在 Spotify 中打开</a>
-            <div class="tip">轻点屏幕顶部横幅通知亦可直接跳转</div>
-        </div>
-    </div>
+  <div class="card">
+    ${image ? `<img class="cover" src="${esc(image)}" alt="">` : `<div class="no-cover">♪</div>`}
+    <h1>${esc(title)}</h1>
+    <p>${esc(desc)}</p>
+    <a class="btn" href="${appScheme}">在 Spotify App 中打开</a>
+    <div class="tip">点不开时，下拉点按刚收到的系统通知也可以直达</div>
+  </div>
 </body>
 </html>`;
 
-    $done({ response: { body: mobilePage } });
+  // 5. 平铺格式返回：替换 body，并剔除会拦截内联样式/脚本的 CSP 与旧的 Content-Length
+  let respHeaders = {};
+  let origHeaders = $response.headers || {};
+  Object.keys(origHeaders).forEach(function (k) {
+    let lk = k.toLowerCase();
+    if (lk === 'content-security-policy' || lk === 'content-security-policy-report-only' || lk === 'content-length') {
+      return;
+    }
+    respHeaders[k] = origHeaders[k];
+  });
+  respHeaders['Content-Type'] = 'text/html; charset=utf-8';
+
+  $done({ headers: respHeaders, body: mobilePage });
 } else {
-    $done({});
+  $done({});
 }
